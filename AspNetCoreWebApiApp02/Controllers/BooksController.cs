@@ -10,10 +10,12 @@ namespace AspNetCoreWebApiApp02.Controllers
     [ApiController]
     public class BooksController : ControllerBase
     {
+        private readonly MongoDbService _dbService;
         private readonly BookService _bookService;
 
-        public BooksController(BookService bookService)
+        public BooksController(MongoDbService dbService, BookService bookService)
         {
+            _dbService = dbService;
             _bookService = bookService;
         }
 
@@ -45,14 +47,28 @@ namespace AspNetCoreWebApiApp02.Controllers
         [HttpPut("{id:length(24)}")]
         public async Task<IActionResult> Update(string id, Book bookIn)
         {
-            var book = await _bookService.Get(id);
-
-            if (book == null)
+            using (var session = await _dbService.StartSessionAsync())
             {
-                return NotFound();
-            }
+                try
+                {
+                    session.StartTransaction();
 
-            _bookService.Update(book.Id, bookIn);
+                    var book = await _bookService.Get(session, id);
+
+                    if (book == null)
+                    {
+                        return NotFound();
+                    }
+
+                    _bookService.Update(session, book.Id, bookIn);
+                }
+                catch
+                {
+                    await session.AbortTransactionAsync();
+                    throw;
+                }
+                await session.CommitTransactionAsync();
+            }
 
             return NoContent();
         }

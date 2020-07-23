@@ -28,6 +28,7 @@ namespace AspNetCoreWebApiApp02
             services.AddSingleton<IBookstoreDatabaseSettings>(sp =>
                 sp.GetRequiredService<IOptions<BookstoreDatabaseSettings>>().Value);
 
+            services.AddSingleton<MongoDbService>();
             services.AddSingleton<BookService>();
 
             services.AddControllers()
